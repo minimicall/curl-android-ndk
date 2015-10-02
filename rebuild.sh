@@ -31,7 +31,7 @@ tar -xvf "curl-$VERSION.tar.gz"
 # Build library
 rm -rf "$DESTINATION"
 pushd "curl-$VERSION"
-./configure --prefix "$DESTINATION" --host="arm-linux-androideabi" --enable-static --disable-shared \
+./configure --prefix "$DESTINATION" --host="arm-linux-androideabi" --enable-static --enable-shared \
   --disable-debug --disable-curldebug --enable-verbose \
   --enable-threaded-resolver --disable-ares \
   --enable-ipv6 \
