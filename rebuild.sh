@@ -1,9 +1,11 @@
 #!/bin/sh
 set -ex
 
-VERSION="7.44.0"
+OPENSSL_VERSION="1.0.2d"
+OPENSSL_DESTINATION="`pwd`/libssl"
 
-DESTINATION="`pwd`/libcurl"
+CURL_VERSION="7.44.0"
+CURL_DESTINATION="`pwd`/libcurl"
 
 export ANDROID_NDK="$HOME/Library/Android/sdk/ndk-bundle"
 
@@ -18,20 +20,39 @@ export LD="$NDK_TOOLCHAIN/bin/arm-linux-androideabi-ld --sysroot=$NDK_PLATFORM"
 export AR="$NDK_TOOLCHAIN/bin/arm-linux-androideabi-ar"
 export RANLIB="$NDK_TOOLCHAIN/bin/arm-linux-androideabi-ranlib"
 
-# Download source
-if [ ! -f "curl-$VERSION.tar.gz" ]
+# Download OpenSSL source
+if [ ! -f "openssl-$OPENSSL_VERSION.tar.gz" ]
 then
-  curl -L -O "https://github.com/bagder/curl/releases/download/curl-7_44_0/curl-$VERSION.tar.gz"
+  curl -O "https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz"
 fi
 
-# Extract source
-rm -rf "curl-$VERSION"
-tar -xvf "curl-$VERSION.tar.gz"
+# Extract OpenSSL source
+rm -rf "openssl-$OPENSSL_VERSION"
+tar -xvf "openssl-$OPENSSL_VERSION.tar.gz"
 
-# Build library
-rm -rf "$DESTINATION"
-pushd "curl-$VERSION"
-./configure --prefix "$DESTINATION" --host="arm-linux-androideabi" --enable-static --enable-shared \
+# Build OpenSSL
+rm -rf "$OPENSSL_DESTINATION"
+pushd "openssl-$OPENSSL_VERSION"
+./Configure android-armv7 --prefix="$OPENSSL_DESTINATION" -shared
+make -j4
+make install_sw
+popd
+rm -rf "$OPENSSL_DESTINATION/bin" "$OPENSSL_DESTINATION/ssl" "$OPENSSL_DESTINATION/lib/engines" "$OPENSSL_DESTINATION/lib/pkgconfig"
+
+# Download cURL source
+if [ ! -f "curl-$CURL_VERSION.tar.gz" ]
+then
+  curl -L -O "https://github.com/bagder/curl/releases/download/curl-7_44_0/curl-$CURL_VERSION.tar.gz"
+fi
+
+# Extract cURL source
+rm -rf "curl-$CURL_VERSION"
+tar -xvf "curl-$CURL_VERSION.tar.gz"
+
+# Build cURL
+rm -rf "$CURL_DESTINATION"
+pushd "curl-$CURL_VERSION"
+./configure --prefix "$CURL_DESTINATION" --host="arm-linux-androideabi" --enable-static --enable-shared \
   --disable-debug --disable-curldebug --enable-verbose \
   --enable-threaded-resolver --disable-ares \
   --enable-ipv6 \
@@ -53,11 +74,12 @@ pushd "curl-$VERSION"
   --disable-gopher \
   --disable-manual \
   --disable-sspi \
-  --without-ssl --without-libssh2
+  --with-ssl="$OPENSSL_DESTINATION" --without-libssh2
 make -j4
 make install
 popd
-rm -rf "$DESTINATION/bin" "$DESTINATION/share" "$DESTINATION/lib/libcurl.la" "$DESTINATION/lib/pkgconfig"
+rm -rf "$CURL_DESTINATION/bin" "$CURL_DESTINATION/share" "$CURL_DESTINATION/lib/libcurl.la" "$CURL_DESTINATION/lib/pkgconfig"
 
 # Clean up
-rm -rf "curl-$VERSION"
+rm -rf "curl-$CURL_VERSION"
+rm -rf "openssl-$OPENSSL_VERSION"
